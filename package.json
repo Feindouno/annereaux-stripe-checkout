@@ -1,0 +1,9 @@
+{
+  "name": "annereaux-stripe-checkout",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mini-panier HTML + Vercel Function Stripe Checkout",
+  "dependencies": {
+    "stripe": "^16.0.0"
+  }
+}

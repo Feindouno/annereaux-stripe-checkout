@@ -1,19 +1,38 @@
 // api/create-checkout-session.js
-import Stripe from 'stripe';
+const Stripe = require('stripe');
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+module.exports = async (req, res) => {
+  if (req.method !== 'POST') {
+    res.statusCode = 405;
+    res.json({ error: 'Method not allowed' });
+    return;
+  }
 
   try {
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-    const body = typeof req.body === 'object' ? req.body : JSON.parse(req.body || '{}');
-    const { items } = body;
+    const secret = process.env.STRIPE_SECRET_KEY;
+    if (!secret) {
+      res.statusCode = 500;
+      res.json({ error: 'STRIPE_SECRET_KEY manquante dans les variables d’environnement.' });
+      return;
+    }
 
-    const line_items = (items || [])
+    const stripe = new Stripe(secret);
+
+    let body = req.body;
+    if (typeof body !== 'object') {
+      try { body = JSON.parse(req.body || '{}'); } catch (e) { body = {}; }
+    }
+
+    const items = Array.isArray(body.items) ? body.items : [];
+    const line_items = items
       .filter(i => i && i.price && Number(i.qty) > 0)
       .map(i => ({ price: i.price, quantity: Number(i.qty) }));
 
-    if (!line_items.length) return res.status(400).json({ error: 'Aucun article sélectionné.' });
+    if (!line_items.length) {
+      res.statusCode = 400;
+      res.json({ error: 'Aucun article sélectionné.' });
+      return;
+    }
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -23,9 +42,11 @@ export default async function handler(req, res) {
       cancel_url: process.env.CANCEL_URL || 'https://example.com/cancel',
     });
 
-    res.status(200).json({ url: session.url });
+    res.statusCode = 200;
+    res.json({ url: session.url });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erreur serveur Stripe.' });
+    console.error('Stripe error:', err);
+    res.statusCode = 500;
+    res.json({ error: 'Erreur serveur Stripe.' });
   }
-}
+};
