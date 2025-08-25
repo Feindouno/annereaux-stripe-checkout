@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "routes": [
+    {
+      "src": "/api/.*",
+      "dest": "/api/create-checkout-session.js"
+    },
+    {
+      "src": "/success",
+      "dest": "/success.html"
+    },
+    {
+      "src": "/cancel",
+      "dest": "/cancel.html"
+    }
+  ]
+}

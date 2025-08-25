@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Commande – Annereaux</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 720px; margin: 32px auto; padding: 0 16px; }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin: 12px 0; }
+    h1 { margin: 0 0 12px 0; }
+    small { color: #6b7280; }
+    input[type="number"] { width: 92px; padding: 8px; border: 1px solid #d1d5db; border-radius: 8px; }
+    button { padding: 12px 16px; border: 0; border-radius: 10px; background: #111827; color: #fff; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .total { text-align: right; font-weight: 600; margin-top: 8px; }
+    .muted { color: #6b7280; font-size: 14px; }
+    .grid { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; }
+    .name { font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Commander vos bouteilles</h1>
+  <p class="muted">Quantité par défaut&nbsp;: 0. Paiement 100% sécurisé via Stripe.</p>
+
+  <div class="card">
+    <div class="grid">
+      <div>
+        <div class="name">Les Annereaux – Bordeaux 2024 – White</div>
+        <small>60,00&nbsp;€ TTC</small>
+      </div>
+      <div>
+        <label>Qté</label>
+        <input id="q1" type="number" min="0" step="1" value="0" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="grid">
+      <div>
+        <div class="name">Les Annereaux – Bordeaux 2021 – Red</div>
+        <small>60,00&nbsp;€ TTC</small>
+      </div>
+      <div>
+        <label>Qté</label>
+        <input id="q2" type="number" min="0" step="1" value="0" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="grid">
+      <div>
+        <div class="name">Château des Annereaux – Lalande de Pomerol 2022 – Red</div>
+        <small>120,00&nbsp;€ TTC</small>
+      </div>
+      <div>
+        <label>Qté</label>
+        <input id="q3" type="number" min="0" step="1" value="0" />
+      </div>
+    </div>
+  </div>
+
+  <div class="total" id="totalTxt">Total estimé&nbsp;: 0,00&nbsp;€</div>
+  <p class="muted">Le total exact sera calculé par Stripe au moment du paiement.</p>
+
+  <button id="pay">Payer</button>
+
+  <script>
+    // TES price_id Stripe (déjà remplis)
+    const PRICES = {
+      p1: 'price_1S00mVHCVb8Iotj0O95oQjHQ', // Bordeaux 2024 - White
+      p2: 'price_1S00kfHCVb8Iotj0USdjkI71', // Bordeaux 2021 - Red
+      p3: 'price_1S00jAHCVb8Iotj0kyI2o8TT'  // Lalande de Pomerol 2022 - Red
+    };
+
+    // Prix indicatifs pour le total estimé (centimes)
+    const HINT_PRICES = { p1: 6000, p2: 6000, p3: 12000 };
+
+    const q1 = document.getElementById('q1');
+    const q2 = document.getElementById('q2');
+    const q3 = document.getElementById('q3');
+    const totalTxt = document.getElementById('totalTxt');
+
+    function updateTotal() {
+      const n1 = Number(q1.value||0), n2 = Number(q2.value||0), n3 = Number(q3.value||0);
+      const cents = n1*HINT_PRICES.p1 + n2*HINT_PRICES.p2 + n3*HINT_PRICES.p3;
+      const euros = (cents/100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+      totalTxt.textContent = 'Total estimé\u00A0: ' + euros;
+    }
+    q1.addEventListener('input', updateTotal);
+    q2.addEventListener('input', updateTotal);
+    q3.addEventListener('input', updateTotal);
+    updateTotal();
+
+    document.getElementById('pay').addEventListener('click', async () => {
+      const items = [
+        { price: PRICES.p1, qty: Number(q1.value||0) },
+        { price: PRICES.p2, qty: Number(q2.value||0) },
+        { price: PRICES.p3, qty: Number(q3.value||0) },
+      ];
+      const selected = items.filter(i => i.qty > 0);
+      if (selected.length === 0) { alert('Sélectionne au moins un article.'); return; }
+
+      try {
+        const res = await fetch('/api/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items })
+        });
+        const data = await res.json();
+        if (data.url) window.location.href = data.url;
+        else alert(data.error || 'Erreur inattendue');
+      } catch (e) {
+        alert('Impossible de créer la session Stripe');
+      }
+    });
+  </script>
+</body>
+</html>
